@@ -5,7 +5,6 @@ Unparseable multi-song cells remain raw; never infer a setlist silently.
 import copy
 import json
 import re
-from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
@@ -311,7 +310,6 @@ def main():
         html, revision, title = get_html(which)
         snapshots[which] = {
             "title": title, "revision": revision, "url": SOURCE_URLS[which],
-            "captured_at": datetime.now(timezone.utc).isoformat(),
         }
         # HTML snapshots deliberately not committed; only source ID is stored.
         if which == "artist":

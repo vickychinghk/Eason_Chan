@@ -156,7 +156,7 @@ def parse_shows(tables, source):
 
 
 def parse_encores(tables, source):
-    rows = []
+    rows, nights = [], []
     for table in tables:
         grid = matrix(table)
         if not grid:
@@ -178,17 +178,18 @@ def parse_encores(tables, source):
             original = short(text(gridrow[si]))
             if not original:
                 continue
+            nights.append({"date": date, "raw_cell": original,
+                           "note_raw": short(text(gridrow[ni])) if ni < len(gridrow) else "",
+                           "source": source})
             for pos, piece in enumerate(pieces or [original], start=1):
                 # Split only on explicit HTML line breaks; one line may still contain
                 # multiple titles. No guess based on whitespace or punctuation.
                 rows.append({
                     "date": date, "slot": pos, "title_raw": piece,
-                    "raw_cell": original,
-                    "note_raw": short(text(gridrow[ni])) if ni < len(gridrow) else "",
                     "parse_status": "html_line_not_identity_verified",
                     "section": "ENCORE", "source": source,
                 })
-    return rows
+    return rows, nights
 
 
 def release_names(cell):
@@ -294,11 +295,12 @@ def main():
     albums = parse_releases([t for _, t in section_tables(artist)], artist_src)
     tables = list(section_tables(tour))
     shows = parse_shows([t for s, t in tables if s == "shows"], tour_src)
-    encores = parse_encores([t for s, t in tables if s == "encores"], tour_src)
+    encores, encore_nights = parse_encores([t for s, t in tables if s == "encores"], tour_src)
     templates = parse_main_templates(tour, tour_src)
     jsonl(OUT / "releases.jsonl", albums)
     jsonl(OUT / "fear_dreams_shows.jsonl", shows)
     jsonl(OUT / "fear_dreams_encores_raw.jsonl", encores)
+    jsonl(OUT / "fear_dreams_encore_nights.jsonl", encore_nights)
     jsonl(OUT / "fear_dreams_main_templates.jsonl", templates)
     (ROOT / "sources" / "wikipedia.json").write_text(
         json.dumps(snapshots, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

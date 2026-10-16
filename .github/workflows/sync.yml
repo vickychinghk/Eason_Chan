@@ -18,7 +18,9 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install -r requirements.txt
-      - run: python scripts/sync.py
+      - name: Refresh MediaWiki sources (manual only)
+        if: github.event_name == 'workflow_dispatch'
+        run: python scripts/sync.py
       - run: python scripts/validate.py
       - run: python scripts/build_sqlite.py
       - name: Commit reproducible results

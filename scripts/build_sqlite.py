@@ -28,6 +28,19 @@ CREATE TABLE song_candidate (id TEXT PRIMARY KEY, title TEXT NOT NULL, source_id
 CREATE TABLE assertion (id TEXT PRIMARY KEY, candidate_id TEXT REFERENCES song_candidate(id),
   predicate TEXT NOT NULL, value_raw TEXT NOT NULL, source_id TEXT,
   verified INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE wiki_song_listing (
+  id TEXT PRIMARY KEY, category TEXT NOT NULL, song_title TEXT NOT NULL,
+  listed_date TEXT, date_raw TEXT, album_title TEXT, album_raw TEXT, track_no INTEGER,
+  with_artist TEXT, composer TEXT, lyricist TEXT, arranger TEXT, producer TEXT,
+  notes TEXT, source_id TEXT, date_semantics TEXT, identity_status TEXT
+);
+CREATE INDEX idx_song_listing_title ON wiki_song_listing(song_title);
+CREATE INDEX idx_song_listing_album ON wiki_song_listing(album_title, track_no);
+CREATE TABLE language_variant_pair (pair_no INTEGER PRIMARY KEY, yue_raw TEXT,
+  en_raw TEXT, cmn_raw TEXT, relation TEXT, source_id TEXT);
+CREATE VIEW wiki_album_first_listed_date AS SELECT album_title, listed_date,
+  COUNT(*) AS track_entries FROM wiki_song_listing
+  WHERE category='album_track' GROUP BY album_title, listed_date;
 CREATE TABLE release_candidate (id TEXT PRIMARY KEY, title TEXT, release_year INTEGER,
   language TEXT, column_type TEXT, type_hint TEXT, label_raw TEXT, source_id TEXT,
   identity_status TEXT NOT NULL);
@@ -89,6 +102,10 @@ def main():
     candidates = read(ROOT / "data/easonkg/song_candidates.jsonl")
     facts = read(ROOT / "data/easonkg/assertions.jsonl")
     release_rows = read(ROOT / "data/wiki/releases.jsonl")
+    track_rows = read(ROOT / "data/wiki/song_album_tracks.jsonl")
+    single_rows = read(ROOT / "data/wiki/song_singles.jsonl")
+    duet_rows = read(ROOT / "data/wiki/song_collaborations.jsonl")
+    bilingual_rows = read(ROOT / "data/wiki/song_bilingual_versions.jsonl")
     show_rows = read(ROOT / "data/wiki/fear_dreams_shows.jsonl")
     encore_rows = read(ROOT / "data/wiki/fear_dreams_encores_raw.jsonl")
     encore_nights = read(ROOT / "data/wiki/fear_dreams_encore_nights.jsonl")
@@ -106,6 +123,21 @@ def main():
         aid = identity("assertion:", cid, fact["predicate"], fact["value"], fact["source"])
         db.execute("INSERT OR IGNORE INTO assertion VALUES (?,?,?,?,?,0)",
                    (aid, cid, fact["predicate"], fact["value"], fact["source"]))
+    for category, records in (("album_track", track_rows), ("single", single_rows),
+                              ("collaboration", duet_rows)):
+        for number, row in enumerate(records):
+            rid = identity("wiki_song_listing:", category, number, row["title"],
+                           row.get("album_title"), row.get("date_raw"))
+            db.execute("INSERT INTO wiki_song_listing VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                       (rid, category, row["title"], row.get("date"), row.get("date_raw"),
+                        row.get("album_title"), row.get("album_raw"), row.get("track_no"),
+                        row.get("with_artist"), row.get("composer"), row.get("lyricist"),
+                        row.get("arranger"), row.get("producer"), row.get("notes"),
+                        row.get("source"), row.get("date_semantics"), row.get("identity")))
+    for row in bilingual_rows:
+        db.execute("INSERT OR REPLACE INTO language_variant_pair VALUES (?,?,?,?,?,?)",
+                   (row["pair_no"], row["yue_raw"], row["en_raw"], row["cmn_raw"],
+                    row["relation"], row["source"]))
     for row in release_rows:
         rid = identity("release_candidate:", row["title"], row["release_year"],
                        row.get("language"), row.get("column_type"),
@@ -166,6 +198,7 @@ def main():
     db.commit()
     summary = {table: db.execute("SELECT COUNT(*) FROM " + table).fetchone()[0]
                for table in ("song_candidate", "assertion", "release_candidate",
+                             "wiki_song_listing", "language_variant_pair",
                              "show", "performance", "encore_night", "main_template", "show_main_template",
                              "main_change", "show_main_candidate")}
     print(json.dumps(summary, ensure_ascii=False))

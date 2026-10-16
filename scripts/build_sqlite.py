@@ -36,6 +36,7 @@ CREATE TABLE show (id TEXT PRIMARY KEY, tour_id TEXT REFERENCES tour(id),
   show_no INTEGER NOT NULL, show_date TEXT NOT NULL, city_raw TEXT, venue_raw TEXT,
   title_raw TEXT, notes_raw TEXT, source_id TEXT, verification TEXT,
   UNIQUE(tour_id,show_no));
+CREATE TABLE encore_night (show_date TEXT PRIMARY KEY, raw_cell TEXT, note_raw TEXT, source_id TEXT);
 CREATE TABLE main_template (id TEXT PRIMARY KEY, title TEXT,
   positions_json TEXT, applicability TEXT, source_id TEXT);
 CREATE TABLE performance (id TEXT PRIMARY KEY, show_id TEXT REFERENCES show(id),
@@ -77,6 +78,7 @@ def main():
     release_rows = read(ROOT / "data/wiki/releases.jsonl")
     show_rows = read(ROOT / "data/wiki/fear_dreams_shows.jsonl")
     encore_rows = read(ROOT / "data/wiki/fear_dreams_encores_raw.jsonl")
+    encore_nights = read(ROOT / "data/wiki/fear_dreams_encore_nights.jsonl")
     templates = read(ROOT / "data/wiki/fear_dreams_main_templates.jsonl")
     for c in candidates:
         db.execute("INSERT OR IGNORE INTO song_candidate VALUES (?,?,?)",
@@ -104,6 +106,9 @@ def main():
                     row.get("city_raw"), row.get("venue_raw"), row.get("title_raw"),
                     row.get("notes_raw"), row.get("source"), row["verification"]))
         by_date.setdefault(row["date"], []).append(row["show_id"])
+    for row in encore_nights:
+        db.execute("INSERT OR REPLACE INTO encore_night VALUES (?,?,?,?)",
+                   (row["date"], row["raw_cell"], row["note_raw"], row["source"]))
     for n, row in enumerate(encore_rows):
         matches = by_date.get(row["date"], [])
         # Do not join when one date has multiple shows.
@@ -112,8 +117,9 @@ def main():
         db.execute("INSERT INTO performance "
                    "(id,show_id,section,encore_round,slot,kind,title_raw,"
                    "parse_status,notes_raw,source_id) VALUES (?,?,?,?,?,?,?,?,?,?)",
-                   (pid, show_id, "ENCORE", None, row["slot"], "UNKNOWN",
-                    row["title_raw"], row.get("parse_status"), row.get("note_raw"),
+                   (pid, show_id, "ENCORE", None, row["slot"],
+                    "SNIPPET" if ("清唱片段" in row["title_raw"] or "僅唱最後一句" in row["title_raw"]) else "UNKNOWN",
+                    row["title_raw"], row.get("parse_status"), None,
                     row.get("source")))
     for row in templates:
         tid = identity("template:", row["template_title"])
@@ -124,7 +130,7 @@ def main():
     db.commit()
     summary = {table: db.execute("SELECT COUNT(*) FROM " + table).fetchone()[0]
                for table in ("song_candidate", "assertion", "release_candidate",
-                             "show", "performance", "main_template")}
+                             "show", "performance", "encore_night", "main_template")}
     print(json.dumps(summary, ensure_ascii=False))
     db.close()
 

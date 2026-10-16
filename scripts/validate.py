@@ -15,6 +15,10 @@ def main():
     shows = rows("data/wiki/fear_dreams_shows.jsonl")
     encore = rows("data/wiki/fear_dreams_encores_raw.jsonl")
     releases = rows("data/wiki/releases.jsonl")
+    tracks = rows("data/wiki/song_album_tracks.jsonl")
+    singles = rows("data/wiki/song_singles.jsonl")
+    collabs = rows("data/wiki/song_collaborations.jsonl")
+    bilingual = rows("data/wiki/song_bilingual_versions.jsonl")
     templates = rows("data/wiki/fear_dreams_main_templates.jsonl")
     curation = ROOT / "data/curation/fear_dreams_template_ranges.json"
     ranges = json.loads(curation.read_text(encoding="utf-8")) if curation.exists() else []
@@ -35,6 +39,10 @@ def main():
                 errors.append("Encore event without matching show: " + event["date"])
         if len({x["date"] for x in encore}) < len({x["date"] for x in shows}):
             warnings.append("Encore coverage smaller than show dates")
+    if len(tracks) < 200:
+        errors.append("Missing Wikipedia album-track song listings")
+    if len(bilingual) < 20:
+        errors.append("Missing Wikipedia language-variant pairs")
     if shows and (not encore or not releases):
         errors.append("Wikipedia show import lacks encore or release candidates")
     if not templates:
@@ -55,10 +63,13 @@ def main():
     conflicts = {k: sorted(v) for k, v in groups.items() if len(v) > 1}
     if conflicts:
         warnings.append("%d song titles have conflicting EasonKG dates" % len(conflicts))
+    # A self-titled album, reused title, song-language variant or reissue is not a unique ID.
     report = {"errors": errors, "warnings": warnings,
               "counts": {"song_candidates": len(songs), "assertions": len(facts),
                          "shows": len(shows), "encore_line_items": len(encore),
                          "release_candidates": len(releases),
+                         "wiki_album_tracks": len(tracks), "wiki_singles": len(singles),
+                         "wiki_collaborations": len(collabs), "bilingual_pairs": len(bilingual),
                          "main_templates": len(templates), "mapped_shows": len(assigned) if shows and templates else 0},
               "date_conflicts": conflicts}
     path = ROOT / "data" / "quality.json"

@@ -1,0 +1,16 @@
+{
+  "shows": 182,
+  "show_number_range": [
+    1,
+    182
+  ],
+  "encore_rows": 495,
+  "encore_dates": 182,
+  "encores_missing_shows": [],
+  "shows_missing_encores": [],
+  "releases": 75,
+  "main_templates": 0,
+  "issues": [
+    "MAIN_TEMPLATE_PARSE_FAILED"
+  ]
+}

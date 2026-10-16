@@ -1,0 +1,28 @@
+{
+  "errors": [],
+  "warnings": [
+    "No main templates extracted; no per-day MAIN data confirmed",
+    "3 song titles have conflicting EasonKG dates"
+  ],
+  "counts": {
+    "song_candidates": 473,
+    "assertions": 1743,
+    "shows": 182,
+    "encore_line_items": 495,
+    "release_candidates": 75
+  },
+  "date_conflicts": {
+    "兄弟": [
+      "2007年10月18日",
+      "2007年12月5日"
+    ],
+    "海胆": [
+      "2017年10月9日",
+      "2017年8月4日"
+    ],
+    "谁来剪月光": [
+      "2017年10月9日",
+      "2017年8月4日"
+    ]
+  }
+}

@@ -250,30 +250,28 @@ def parse_releases(tables, source):
 
 
 def parse_main_templates(soup, source):
-    """Persist main-song candidates as city templates, not verified daily shows."""
-    in_section, city, songs = False, None, {}
-    for element in soup.find_all(["h2", "h3", "p", "ol"]):
-        if element.name == "h2":
-            in_section = "演唱曲目" in text(element)
-            city = None
-        elif element.name == "h3" and "主歌單更迭" in text(element):
-            in_section = False
-        elif not in_section:
+    """Read Wikipedia's collapsed city blocks; conditional positions stay raw."""
+    templates = []
+    for block in soup.select("div.hidden-div.mw-collapsible"):
+        lines = [short(x) for x in block.get_text("\n", strip=True).split("\n") if short(x)]
+        title = next((x for x in lines if "FEAR AND DREAMS" in x.upper() and "站" in x), "")
+        if not title:
             continue
-        elif element.name == "p":
-            title = short(text(element))
-            if "FEAR AND DREAMS" in title.upper() and "站" in title:
-                city = title
-        elif element.name == "ol" and city and not element.find_parent("table"):
-            items = element.find_all("li", recursive=False)
-            if items:
-                songs.setdefault(city, []).extend(short(text(i)) for i in items)
-    return [{
-        "template_title": name, "positions_raw": values,
-        "applicability": "unresolved_per_show",
-        "warning": "Never copy blindly to every show in this city; daily substitutions exist.",
-        "source": source,
-    } for name, values in songs.items() if len(values) >= 15]
+        positions = []
+        for line in lines:
+            match = re.match(r"^(\d{1,2})[.．]\s*(.+)$", line)
+            if match:
+                positions.append({"position": int(match.group(1)),
+                                  "title_raw": match.group(2),
+                                  "conditional": bool(re.search(r"第[一二三四五六七八九十\d]|僅|仅|[\/／]", match.group(2)))})
+        if len(positions) >= 15:
+            templates.append({
+                "template_title": title, "positions_raw": positions,
+                "applicability": "unresolved_per_show",
+                "warning": "This template has conditional positions; verify show-specific overrides.",
+                "source": source,
+            })
+    return templates
 
 
 def main():
@@ -321,15 +319,6 @@ def main():
     if not encores:
         report["issues"].append("ENCORE_TABLE_PARSE_FAILED")
     if not templates:
-        head = next((x for x in tour.find_all("h2") if "演唱曲目" in text(x)), None)
-        if head:
-            container = head.parent if head.parent.name == "div" else head
-            nodes = [x for x in container.next_siblings if getattr(x, "name", None)]
-            print("MAIN_DOM_DIAGNOSTIC", json.dumps([
-                {"tag": x.name, "class": x.get("class", []),
-                 "sample": short(text(x))[:110], "ol": len(x.find_all("ol")),
-                 "tables": len(x.find_all("table"))}
-                for x in nodes[:22]], ensure_ascii=False))
         report["issues"].append("MAIN_TEMPLATE_PARSE_FAILED")
     (OUT / "report.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

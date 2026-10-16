@@ -392,10 +392,19 @@ def parse_song_lists(soup, source):
                 item["album_style_raw"] = cells[1].get("style", "") if len(cells) > 1 and cells[1] else ""
                 if not item["album_title"]:
                     continue
-                try:
-                    item["track_no"] = int(item["track_raw"])
-                except ValueError:
-                    item["track_no"] = None
+                track = re.fullmatch(r"(\d+)-(\d+)", item["track_raw"])
+                if track:
+                    item["disc_no"], item["track_no"] = map(int, track.groups())
+                else:
+                    item["disc_no"] = 1
+                    item["track_no"] = (int(item["track_raw"])
+                                        if item["track_raw"].isdigit() else None)
+                # Documented Wiki legend: blue album, salmon EP, green compilation.
+                color = item["album_style_raw"].lower()
+                item["album_kind_hint"] = ("studio_album" if "lightsteelblue" in color
+                                           else "ep" if "lightsalmon" in color
+                                           else "compilation" if "darkseagreen" in color
+                                           else "unknown")
                 item["date_semantics"] = "album_listing_date_NOT_confirmed_first_single_release"
                 albums.append(item)
             elif section == "singles":

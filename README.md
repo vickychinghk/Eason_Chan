@@ -10,8 +10,10 @@
 
 **数据约定**：歌名/专辑名不是主键；作品、录音版本、发行实体、演出事件均使用稳定 ID。信息冲突保留不同来源的原始说法，不以猜测覆盖。无明确依据的发行日期、首次收录专辑及安可片段均保持未知。
 
-运行：`python -m pip install -r requirements.txt && python scripts/sync.py && python scripts/validate.py && python scripts/build_sqlite.py`
+本地重建：`pip install -r requirements.txt && python scripts/validate.py && python scripts/build_sqlite.py`；刷新维基数据：`python scripts/sync.py`，或 GitHub Actions 手动运行 **Refresh Wikipedia structured data**。
 
-资料源：[中文维基·陈奕迅](https://zh.wikipedia.org/wiki/陳奕迅) · [FEAR AND DREAMS](https://zh.wikipedia.org/wiki/FEAR_AND_DREAMS) · [EasonKG](https://github.com/doriscullen/EasonKG)。
+逐日查询：`python scripts/query.py 2025-08-10`。主歌单是尚待逐场确认的地区模板映射；Encore 是维基逐日记录。
+
+资料源：[中文维基·陈奕迅](https://zh.wikipedia.org/wiki/陳奕迅) · [陳奕迅歌曲列表](https://zh.wikipedia.org/wiki/陳奕迅歌曲列表) · [FEAR AND DREAMS](https://zh.wikipedia.org/wiki/FEAR_AND_DREAMS) · [EasonKG](https://github.com/doriscullen/EasonKG)。
 
 Wikipedia 内容可能采用 CC BY-SA 许可：再使用保留来源、修订版本与署名；EasonKG 未找到明确 LICENSE，故仅导入客观事实及注明原出处，不直接复制原项目文本或整份 CSV。

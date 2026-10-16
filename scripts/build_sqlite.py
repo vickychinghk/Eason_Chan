@@ -39,6 +39,17 @@ CREATE TABLE show (id TEXT PRIMARY KEY, tour_id TEXT REFERENCES tour(id),
 CREATE TABLE encore_night (show_date TEXT PRIMARY KEY, raw_cell TEXT, note_raw TEXT, source_id TEXT);
 CREATE TABLE main_template (id TEXT PRIMARY KEY, title TEXT,
   positions_json TEXT, applicability TEXT, source_id TEXT);
+CREATE TABLE show_main_template (show_id TEXT REFERENCES show(id) PRIMARY KEY,
+  template_id TEXT REFERENCES main_template(id), assignment TEXT);
+CREATE VIEW show_main_candidate AS
+  SELECT m.show_id, s.show_date, t.title AS template_title,
+    CAST(json_extract(j.value,'$.position') AS INTEGER) AS position,
+    json_extract(j.value,'$.title_raw') AS title_raw,
+    json_extract(j.value,'$.conditional') AS conditional,
+    m.assignment
+  FROM show_main_template m JOIN show s ON s.id=m.show_id
+  JOIN main_template t ON t.id=m.template_id,
+       json_each(t.positions_json) AS j;
 CREATE TABLE main_change (id TEXT PRIMARY KEY, effective_on TEXT, show_no INTEGER,
   changes_json TEXT, source_id TEXT, applicability TEXT);
 CREATE TABLE performance (id TEXT PRIMARY KEY, show_id TEXT REFERENCES show(id),
@@ -83,6 +94,8 @@ def main():
     encore_nights = read(ROOT / "data/wiki/fear_dreams_encore_nights.jsonl")
     templates = read(ROOT / "data/wiki/fear_dreams_main_templates.jsonl")
     main_changes = read(ROOT / "data/wiki/fear_dreams_main_changes.jsonl")
+    ranges_path = ROOT / "data/curation/fear_dreams_template_ranges.json"
+    ranges = json.loads(ranges_path.read_text(encoding="utf-8")) if ranges_path.exists() else []
     for c in candidates:
         db.execute("INSERT OR IGNORE INTO song_candidate VALUES (?,?,?)",
                    (identity("candidate:", c["title"]), c["title"], c.get("source")))
@@ -130,6 +143,20 @@ def main():
                    (tid, row["template_title"],
                     json.dumps(row["positions_raw"], ensure_ascii=False),
                     row["applicability"], row["source"]))
+    template_names = {row["template_title"] for row in templates}
+    assigned = set()
+    for block in ranges:
+        if block["template_title"] not in template_names:
+            raise ValueError("Template not found: " + block["template_title"])
+        tid = identity("template:", block["template_title"])
+        for number in range(block["first"], block["last"] + 1):
+            if number in assigned:
+                raise ValueError("Overlapping template at show " + str(number))
+            assigned.add(number)
+            db.execute("INSERT INTO show_main_template VALUES (?,?,?)",
+                       ("fad-%03d" % number, tid, block["assignment"]))
+    if show_rows and assigned != {r["number"] for r in show_rows}:
+        raise ValueError("Template mapping is not exhaustive")
     for row in main_changes:
         mid = identity("change:", row["effective_on"], row["changes_raw"])
         db.execute("INSERT OR IGNORE INTO main_change VALUES (?,?,?,?,?,?)",
@@ -139,7 +166,8 @@ def main():
     db.commit()
     summary = {table: db.execute("SELECT COUNT(*) FROM " + table).fetchone()[0]
                for table in ("song_candidate", "assertion", "release_candidate",
-                             "show", "performance", "encore_night", "main_template", "main_change")}
+                             "show", "performance", "encore_night", "main_template", "show_main_template",
+                             "main_change", "show_main_candidate")}
     print(json.dumps(summary, ensure_ascii=False))
     db.close()
 

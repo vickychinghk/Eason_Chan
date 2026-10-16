@@ -263,7 +263,7 @@ def parse_main_templates(soup, source):
             if match:
                 positions.append({"position": int(match.group(1)),
                                   "title_raw": match.group(2),
-                                  "conditional": bool(re.search(r"第[一二三四五六七八九十\d]|僅|仅|[\/／]", match.group(2)))})
+                                  "conditional": bool(re.search(r"第[一二三四五六七八九十\d]+[場场]|第一至|僅|仅|[\/／]", match.group(2)))})
         if len(positions) >= 15:
             templates.append({
                 "template_title": title, "positions_raw": positions,
@@ -273,6 +273,36 @@ def parse_main_templates(soup, source):
             })
     return templates
 
+
+
+def parse_main_changes(soup, source):
+    """Retain explicit change history; descriptions are not applied as global rules."""
+    heading = next((x for x in soup.find_all("h3") if "主歌單更迭歷史" in text(x)), None)
+    if not heading:
+        return []
+    start = heading.parent if heading.parent.name == "div" else heading
+    events = []
+    for node in start.next_siblings:
+        if not getattr(node, "name", None):
+            continue
+        if node.name == "h2" or (node.name == "div" and "mw-heading2" in node.get("class", [])):
+            break
+        if node.name != "ul":
+            continue
+        for li in node.find_all("li", recursive=False):
+            first = li.get_text(" ", strip=True)
+            date = as_date(first)
+            if not date:
+                continue
+            number = re.search(r"演唱會第\s*(\d+)\s*場", first)
+            sub = li.find(["ul", "ol"], recursive=False)
+            changes = [short(text(x)) for x in sub.find_all("li", recursive=False)] if sub else []
+            if not changes:
+                changes = [short(first)]
+            events.append({"effective_on": date, "show_number": int(number.group(1)) if number else None,
+                           "changes_raw": changes, "source": source,
+                           "applicability": "requires_confirmation"})
+    return events
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
@@ -295,11 +325,13 @@ def main():
     shows = parse_shows([t for s, t in tables if s == "shows"], tour_src)
     encores, encore_nights = parse_encores([t for s, t in tables if s == "encores"], tour_src)
     templates = parse_main_templates(tour, tour_src)
+    changes = parse_main_changes(tour, tour_src)
     jsonl(OUT / "releases.jsonl", albums)
     jsonl(OUT / "fear_dreams_shows.jsonl", shows)
     jsonl(OUT / "fear_dreams_encores_raw.jsonl", encores)
     jsonl(OUT / "fear_dreams_encore_nights.jsonl", encore_nights)
     jsonl(OUT / "fear_dreams_main_templates.jsonl", templates)
+    jsonl(OUT / "fear_dreams_main_changes.jsonl", changes)
     (ROOT / "sources" / "wikipedia.json").write_text(
         json.dumps(snapshots, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     dates = {row["date"] for row in shows}
@@ -310,6 +342,7 @@ def main():
         "encores_missing_shows": sorted({x["date"] for x in encores} - dates),
         "shows_missing_encores": sorted(dates - {x["date"] for x in encores}),
         "releases": len(albums), "main_templates": len(templates),
+        "main_change_events": len(changes),
         "issues": [],
     }
     if len(shows) != 182 or [x["number"] for x in shows] != list(range(1, 183)):

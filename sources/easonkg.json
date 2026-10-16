@@ -1,0 +1,18 @@
+{
+  "source": "easonkg:673ca75ff6fd",
+  "repository": "https://github.com/doriscullen/EasonKG",
+  "revision": "673ca75ff6fd0120c1142d5cef53dcbdf354feb0",
+  "files": [
+    "data_collection/data/all_songs.csv",
+    "data_collection/data/relation.csv",
+    "data_collection/data/song_date.csv"
+  ],
+  "license": "not-found-in-repository",
+  "method": "fact-extraction",
+  "notice": "PaddleNLP automatic relation extraction plus limited manual corrections; assertions unverified.",
+  "counts": {
+    "candidates": 473,
+    "relations": 1399,
+    "release_dates": 344
+  }
+}

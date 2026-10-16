@@ -39,6 +39,8 @@ CREATE TABLE show (id TEXT PRIMARY KEY, tour_id TEXT REFERENCES tour(id),
 CREATE TABLE encore_night (show_date TEXT PRIMARY KEY, raw_cell TEXT, note_raw TEXT, source_id TEXT);
 CREATE TABLE main_template (id TEXT PRIMARY KEY, title TEXT,
   positions_json TEXT, applicability TEXT, source_id TEXT);
+CREATE TABLE main_change (id TEXT PRIMARY KEY, effective_on TEXT, show_no INTEGER,
+  changes_json TEXT, source_id TEXT, applicability TEXT);
 CREATE TABLE performance (id TEXT PRIMARY KEY, show_id TEXT REFERENCES show(id),
   section TEXT NOT NULL, encore_round INTEGER, slot INTEGER, work_id TEXT REFERENCES work(id),
   recording_id TEXT REFERENCES recording(id), kind TEXT NOT NULL DEFAULT 'UNKNOWN',
@@ -80,6 +82,7 @@ def main():
     encore_rows = read(ROOT / "data/wiki/fear_dreams_encores_raw.jsonl")
     encore_nights = read(ROOT / "data/wiki/fear_dreams_encore_nights.jsonl")
     templates = read(ROOT / "data/wiki/fear_dreams_main_templates.jsonl")
+    main_changes = read(ROOT / "data/wiki/fear_dreams_main_changes.jsonl")
     for c in candidates:
         db.execute("INSERT OR IGNORE INTO song_candidate VALUES (?,?,?)",
                    (identity("candidate:", c["title"]), c["title"], c.get("source")))
@@ -127,10 +130,16 @@ def main():
                    (tid, row["template_title"],
                     json.dumps(row["positions_raw"], ensure_ascii=False),
                     row["applicability"], row["source"]))
+    for row in main_changes:
+        mid = identity("change:", row["effective_on"], row["changes_raw"])
+        db.execute("INSERT OR IGNORE INTO main_change VALUES (?,?,?,?,?,?)",
+                   (mid, row["effective_on"], row.get("show_number"),
+                    json.dumps(row["changes_raw"], ensure_ascii=False),
+                    row["source"], row["applicability"]))
     db.commit()
     summary = {table: db.execute("SELECT COUNT(*) FROM " + table).fetchone()[0]
                for table in ("song_candidate", "assertion", "release_candidate",
-                             "show", "performance", "encore_night", "main_template")}
+                             "show", "performance", "encore_night", "main_template", "main_change")}
     print(json.dumps(summary, ensure_ascii=False))
     db.close()
 

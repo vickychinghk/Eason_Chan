@@ -15,6 +15,9 @@ def main():
     shows = rows("data/wiki/fear_dreams_shows.jsonl")
     encore = rows("data/wiki/fear_dreams_encores_raw.jsonl")
     releases = rows("data/wiki/releases.jsonl")
+    templates = rows("data/wiki/fear_dreams_main_templates.jsonl")
+    curation = ROOT / "data/curation/fear_dreams_template_ranges.json"
+    ranges = json.loads(curation.read_text(encoding="utf-8")) if curation.exists() else []
     errors, warnings = [], []
     if not songs or not facts:
         errors.append("EasonKG fact import missing")
@@ -34,8 +37,17 @@ def main():
             warnings.append("Encore coverage smaller than show dates")
     if shows and (not encore or not releases):
         errors.append("Wikipedia show import lacks encore or release candidates")
-    if not rows("data/wiki/fear_dreams_main_templates.jsonl"):
+    if not templates:
         warnings.append("No main templates extracted; no per-day MAIN data confirmed")
+    if shows and templates:
+        titles = {row["template_title"] for row in templates}
+        assigned = [n for block in ranges for n in range(block["first"], block["last"] + 1)]
+        if sorted(assigned) != list(range(1, 183)):
+            errors.append("Show-to-template ranges do not cover 182 shows exactly once")
+        missing_titles = sorted({block["template_title"] for block in ranges} - titles)
+        if missing_titles:
+            errors.append("Unknown main template titles: " + ", ".join(missing_titles))
+        warnings.append("182 MAIN song lists are template projections, NOT day-by-day verified")
     groups = {}
     for r in facts:
         if r["predicate"] == "reported_release_date":
@@ -46,7 +58,8 @@ def main():
     report = {"errors": errors, "warnings": warnings,
               "counts": {"song_candidates": len(songs), "assertions": len(facts),
                          "shows": len(shows), "encore_line_items": len(encore),
-                         "release_candidates": len(releases)},
+                         "release_candidates": len(releases),
+                         "main_templates": len(templates), "mapped_shows": len(assigned) if shows and templates else 0},
               "date_conflicts": conflicts}
     path = ROOT / "data" / "quality.json"
     path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n",

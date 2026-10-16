@@ -11,5 +11,9 @@
   "releases": 75,
   "main_templates": 30,
   "main_change_events": 7,
+  "song_album_tracks": 401,
+  "song_singles": 34,
+  "song_collaborations": 33,
+  "song_bilingual_pairs": 23,
   "issues": []
 }

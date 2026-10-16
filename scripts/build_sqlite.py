@@ -30,16 +30,17 @@ CREATE TABLE assertion (id TEXT PRIMARY KEY, candidate_id TEXT REFERENCES song_c
   verified INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE wiki_song_listing (
   id TEXT PRIMARY KEY, category TEXT NOT NULL, song_title TEXT NOT NULL,
-  listed_date TEXT, date_raw TEXT, album_title TEXT, album_raw TEXT, track_no INTEGER,
+  listed_date TEXT, date_raw TEXT, album_title TEXT, album_raw TEXT,
+  album_kind_hint TEXT, disc_no INTEGER, track_no INTEGER,
   with_artist TEXT, composer TEXT, lyricist TEXT, arranger TEXT, producer TEXT,
   notes TEXT, source_id TEXT, date_semantics TEXT, identity_status TEXT
 );
 CREATE INDEX idx_song_listing_title ON wiki_song_listing(song_title);
-CREATE INDEX idx_song_listing_album ON wiki_song_listing(album_title, track_no);
+CREATE INDEX idx_song_listing_album ON wiki_song_listing(album_title, disc_no, track_no);
 CREATE TABLE language_variant_pair (pair_no INTEGER PRIMARY KEY, yue_raw TEXT,
   en_raw TEXT, cmn_raw TEXT, relation TEXT, source_id TEXT);
 CREATE VIEW wiki_album_first_listed_date AS SELECT album_title, listed_date,
-  COUNT(*) AS track_entries FROM wiki_song_listing
+  MAX(album_kind_hint) AS category_hint, COUNT(*) AS track_entries FROM wiki_song_listing
   WHERE category='album_track' GROUP BY album_title, listed_date;
 CREATE TABLE release_candidate (id TEXT PRIMARY KEY, title TEXT, release_year INTEGER,
   language TEXT, column_type TEXT, type_hint TEXT, label_raw TEXT, source_id TEXT,
@@ -128,9 +129,10 @@ def main():
         for number, row in enumerate(records):
             rid = identity("wiki_song_listing:", category, number, row["title"],
                            row.get("album_title"), row.get("date_raw"))
-            db.execute("INSERT INTO wiki_song_listing VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            db.execute("INSERT INTO wiki_song_listing VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                        (rid, category, row["title"], row.get("date"), row.get("date_raw"),
-                        row.get("album_title"), row.get("album_raw"), row.get("track_no"),
+                        row.get("album_title"), row.get("album_raw"),
+                        row.get("album_kind_hint"), row.get("disc_no"), row.get("track_no"),
                         row.get("with_artist"), row.get("composer"), row.get("lyricist"),
                         row.get("arranger"), row.get("producer"), row.get("notes"),
                         row.get("source"), row.get("date_semantics"), row.get("identity")))

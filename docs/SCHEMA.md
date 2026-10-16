@@ -11,7 +11,9 @@
 
 ## 数据层
 - `data/easonkg/*.jsonl`：EasonKG 候选歌曲与关系断言，**未经逐首核验，非主表**。
-- `data/wiki/*`：MediaWiki 修订号固定的巡演原始结构化片段；不储存冗长百科原文。
+- `data/wiki/*`：按 MediaWiki revision 固定的专辑曲目／单曲／合唱／双语版本、巡演逐场 Encore 与常规模板；不储存冗长百科原文。
+- `song_album_tracks.jsonl`：401 条维基专辑曲目候选，含唱片及曲序、词曲作者、编曲、监制、发行日与专辑／EP／精选类型；**不是歌曲首次发行日的保证**。
+- `song_bilingual_versions.jsonl`：23 组跨语言版本关联；相同标题并不意味着同一歌词或录音。
 - `data/db/eason.sqlite`：由脚本生成，可供 API/网页查询，不作独立事实源。
 - 证据等级：已逐条复核 > Wikipedia 结构化资料 > EasonKG 自动抽取 > 粉丝内容；**来源优先级不等于真实性保证**。
 
@@ -22,3 +24,5 @@
 4. Encore 每个分段和清唱分别记录；原表无法分割时只保存 raw，禁止猜测歌序。
 5. 自动产生的场次模板必须标记 `unverified_template`，不能冒充当晚真实歌单。
 6. 导入必须幂等；缺失值不推断；源修订变化可复现且留痕。
+7. `wiki_song_listing` 与 `language_variant_pair` 为可核验事实候选层，不直接填充唯一作品表；专辑发行日与单曲发行日分别保存。
+8. MediaWiki API 可能返回 429；GitHub Actions 仅手动刷新网络原始数据，代码 push 则离线重建 SQLite。

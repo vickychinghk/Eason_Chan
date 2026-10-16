@@ -1,7 +1,6 @@
 {
   "errors": [],
   "warnings": [
-    "No main templates extracted; no per-day MAIN data confirmed",
     "3 song titles have conflicting EasonKG dates"
   ],
   "counts": {

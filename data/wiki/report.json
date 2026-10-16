@@ -9,8 +9,6 @@
   "encores_missing_shows": [],
   "shows_missing_encores": [],
   "releases": 75,
-  "main_templates": 0,
-  "issues": [
-    "MAIN_TEMPLATE_PARSE_FAILED"
-  ]
+  "main_templates": 30,
+  "issues": []
 }

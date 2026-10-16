@@ -1,6 +1,7 @@
 {
   "errors": [],
   "warnings": [
+    "182 MAIN song lists are template projections, NOT day-by-day verified",
     "3 song titles have conflicting EasonKG dates"
   ],
   "counts": {
@@ -8,7 +9,9 @@
     "assertions": 1743,
     "shows": 182,
     "encore_line_items": 495,
-    "release_candidates": 75
+    "release_candidates": 75,
+    "main_templates": 30,
+    "mapped_shows": 182
   },
   "date_conflicts": {
     "兄弟": [

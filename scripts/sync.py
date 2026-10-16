@@ -319,6 +319,15 @@ def main():
     if not encores:
         report["issues"].append("ENCORE_TABLE_PARSE_FAILED")
     if not templates:
+        head = next((x for x in tour.find_all("h2") if "演唱曲目" in text(x)), None)
+        if head:
+            container = head.parent if head.parent.name == "div" else head
+            nodes = [x for x in container.next_siblings if getattr(x, "name", None)]
+            print("MAIN_DOM_DIAGNOSTIC", json.dumps([
+                {"tag": x.name, "class": x.get("class", []),
+                 "sample": short(text(x))[:110], "ol": len(x.find_all("ol")),
+                 "tables": len(x.find_all("table"))}
+                for x in nodes[:22]], ensure_ascii=False))
         report["issues"].append("MAIN_TEMPLATE_PARSE_FAILED")
     (OUT / "report.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
